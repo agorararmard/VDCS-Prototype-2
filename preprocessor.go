@@ -11,28 +11,15 @@ var goCnt int
 
 var supportedFunc [1]string = [1]string{"myStringMatch"}
 
-var mapImports map[string]bool = map[string]bool{"fmt": false, "strings": false}
+var mapImports map[string]bool = map[string]bool{"fmt": false, "sync": false}
 
-const commBlock string = "func comm(cir string,cID int) {\nfmt.Println(cir)\nfmt.Println(cID)\n//get the circuit in JSON format\n//Generate input wires\n//post to server\n//Wait for response\n}"
-const evalBlock string = "func eval(cID int) {\nfmt.Println(cir)\n//generate input wires for given inputs\n//fetch the garbled circuit with the cID\n//post to server\n//Wait for response\n return true\n}"
-
-func addImports(s []string, idx int) []string {
-	var concat string
-	for key, val := range mapImports {
-		if val == false {
-			concat += "\"" + key + "\"\n"
-		}
-	}
-	concat = "import (\n" + concat + ")\n"
-
-	s = append(s[:idx+1], append(strings.Split(concat, "\n"), s[idx+1:]...)...)
-	return s
-}
+const commBlock string = "func comm(cir string,cID int) {\nfmt.Println(cir)\nfmt.Println(cID)\n//get the circuit in JSON format\n//Generate input wires\n//post to server\n//Wait for response\nwg.Done()}"
+const evalBlock string = "func evalcID int) (bool){\nwg.Wait()\ncir := \"You did it!\"\nfmt.Println(cir)\n//generate input wires for given inputs\n//fetch the garbled circuit with the cID\n//post to server\n//Wait for response\n return true\n}"
 
 func main() {
 
 	//reading code from source
-	data, err := ioutil.ReadFile("main.goc")
+	data, err := ioutil.ReadFile("inDir/main.go")
 	if err != nil {
 		panic("Error Reading file")
 	}
@@ -49,9 +36,9 @@ func main() {
 					importIdx = -1
 				} else {
 					mapImports[strings.Split(proc[i], "\"")[1]] = true
-					fmt.Println("------")
-					fmt.Println(strings.Split(proc[i], "\"")[1])
-					fmt.Println("------")
+					//fmt.Println("------")
+					//fmt.Println(strings.Split(proc[i], "\"")[1])
+					//fmt.Println("------")
 					importIdx = i
 				}
 			}
@@ -59,9 +46,9 @@ func main() {
 			if strings.Contains(proc[i], ")") == true {
 				importIdx = i
 			} else {
-				fmt.Println("------")
-				fmt.Println(strings.Split(proc[i], "\"")[1])
-				fmt.Println("------")
+				//fmt.Println("------")
+				//fmt.Println(strings.Split(proc[i], "\"")[1])
+				//fmt.Println("------")
 				mapImports[strings.Split(proc[i], "\"")[1]] = true
 			}
 		}
@@ -78,39 +65,74 @@ func main() {
 		}
 
 		if strings.Contains(proc[i], "//VDCS") == true {
-			fmt.Println("I'm here and it's true")
-			proc = addComm(proc, i+1, mainIdx)
-			proc = addEval(proc, i+1)
+			//fmt.Println("I'm here and it's true")
+			circ, params := extractCircuit(proc[i+1])
+			typesA := getTypes(proc, params)
+			//fmt.Println(typesA)
+			for _, val := range typesA {
+				circ += "_" + val
+			}
+			fmt.Println(params, typesA)
+			proc = addComm(proc, circ, mainIdx)
+			proc = addEval(proc, i+1, params, typesA)
 			goCnt++
 			i++
 			loopLen++
 		}
 	}
+	proc = addWGADD(proc, mainIdx)
 
 	for _, val := range proc {
 		fmt.Println(string(val))
 	}
-}
-
-func addComm(s []string, idx, mainIdx int) []string {
-	circ, params := extractCircuit(s[idx])
-	typesA := getTypes(s, params)
-	fmt.Println(typesA)
-	for _, val := range typesA {
-		circ += "_" + val
+	var myData []byte = []byte(strings.Join(proc, "\n"))
+	err = ioutil.WriteFile("outDir/myMain.go", myData, 0777)
+	// handle this error
+	if err != nil {
+		// print it out
+		fmt.Println(err)
 	}
-	fmt.Println("Let's create call")
-	var call string = "go comm(" + circ + strconv.Itoa(goCnt) + ")"
-	fmt.Println(call)
-	s = append(s[:mainIdx+1], append(strings.Split(call, "\n"), s[mainIdx+1:]...)...)
-	s = append(s, strings.Split(commBlock, "\n")...)
-	fmt.Println("\n\n\n\nGoing out of add comm")
+
+}
+
+func addImports(s []string, idx int) []string {
+	var concat string
+	for key, val := range mapImports {
+		if val == false {
+			concat += "\"" + key + "\"\n"
+		}
+	}
+	concat = "import (\n" + concat + ")\nvar wg = sync.WaitGroup{}\n"
+
+	s = append(s[:idx+1], append(strings.Split(concat, "\n"), s[idx+1:]...)...)
 	return s
 }
 
-func addEval(s []string, idx int) []string {
-	s = append(s, strings.Split(evalBlock, "\n")...)
+func addComm(s []string, circ string, mainIdx int) []string {
+
+	var call string = "go comm" + strconv.Itoa(goCnt) + "(\"" + circ + "\"," + strconv.Itoa(goCnt) + ")"
+	//fmt.Println(call)
+	s = append(s[:mainIdx+1], append(strings.Split(call, "\n"), s[mainIdx+1:]...)...)
+
+	stpIdx := strings.Index(commBlock, "comm")
+	sigComm := commBlock[:stpIdx+4] + strconv.Itoa(goCnt) + commBlock[stpIdx+4:]
+	s = append(s, strings.Split(sigComm, "\n")...)
 	return s
+}
+
+func addEval(code []string, idx int, params, typesA []string) []string {
+	fmt.Println(params, typesA)
+	idx++
+	code[idx] = strings.ReplaceAll(code[idx], "myStringMatch", "eval"+strconv.Itoa(goCnt))
+	code[idx] = strings.Replace(code[idx], ")", ", "+strconv.Itoa(goCnt)+")", 1)
+	stpIdx := strings.Index(evalBlock, "eval")
+	sigEval := evalBlock[:stpIdx+4] + strconv.Itoa(goCnt) + "("
+	for k, val := range params {
+		sigEval += val + " " + strings.Split(typesA[k], "_")[0] + ","
+	}
+	sigEval += evalBlock[stpIdx+4:]
+	code = append(code, strings.Split(sigEval, "\n")...)
+	return code
 }
 
 func extractCircuit(call string) (circ string, params []string) {
@@ -126,7 +148,6 @@ Loop:
 			break Loop
 		}
 	}
-	fmt.Println("Returning")
 	return
 }
 
@@ -142,9 +163,9 @@ func getTypes(code, params []string) (typesA []string) {
 			if strings.Contains(line, val) == true {
 				if strings.Contains(line, "var") == true {
 					segLine := strings.Split(strings.Split(line, "var")[1], " ")
-					fmt.Println(line, val)
-					fmt.Println(segLine)
-					fmt.Println(segLine[1], val)
+					//fmt.Println(line, val)
+					//fmt.Println(segLine)
+					//fmt.Println(segLine[1], val)
 
 					if segLine[1] == val {
 						typesA = append(typesA, segLine[2])
@@ -153,7 +174,7 @@ func getTypes(code, params []string) (typesA []string) {
 						} else {
 							typesA[inc] += n
 						}
-						fmt.Println(typesA)
+						//fmt.Println(typesA)
 						inc++
 						break
 					}
@@ -176,4 +197,10 @@ func getTypes(code, params []string) (typesA []string) {
 		}
 	}
 	return
+}
+
+func addWGADD(code []string, mainIdx int) []string {
+	call := "wg.Add(" + strconv.Itoa(goCnt) + ")\n"
+	code = append(code[:mainIdx+1], append(strings.Split(call, "\n"), code[mainIdx+1:]...)...)
+	return code
 }

@@ -1,0 +1,14 @@
+package main
+
+import (
+	"fmt"
+)
+func main() {
+	var s1 string = "Hello World!"
+	var s2 string = "lo Wo"
+	//VDCS
+	if myStringMatch(s1, s2)
+		fmt.Println("Yes they are!")
+	else
+		fmt.Println("No they aren't!")
+}

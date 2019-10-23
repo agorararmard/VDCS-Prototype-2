@@ -3,6 +3,10 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 )
@@ -18,8 +22,11 @@ const evalBlock string = "func evalcID int) (bool){\nwg.Wait()\ncir := \"You did
 
 func main() {
 
+	inputFile := "./inDir/main.go"
+	outputFile := "./outDir/myMain.go"
 	//reading code from source
-	data, err := ioutil.ReadFile("inDir/main.go")
+	//fmt.Println(os.Args[0])
+	data, err := ioutil.ReadFile(inputFile)
 	if err != nil {
 		panic("Error Reading file")
 	}
@@ -72,7 +79,6 @@ func main() {
 			for _, val := range typesA {
 				circ += "_" + val
 			}
-			fmt.Println(params, typesA)
 			proc = addComm(proc, circ, mainIdx)
 			proc = addEval(proc, i+1, params, typesA)
 			goCnt++
@@ -82,17 +88,28 @@ func main() {
 	}
 	proc = addWGADD(proc, mainIdx)
 
-	for _, val := range proc {
+	/*for _, val := range proc {
 		fmt.Println(string(val))
-	}
+	}*/
 	var myData []byte = []byte(strings.Join(proc, "\n"))
-	err = ioutil.WriteFile("outDir/myMain.go", myData, 0777)
+	err = ioutil.WriteFile(outputFile, myData, 0777)
 	// handle this error
 	if err != nil {
 		// print it out
 		fmt.Println(err)
 	}
 
+	cmd := exec.Command("go", "run", outputFile)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("tasklist")
+	}
+	err = cmd.Run()
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+	//time.Sleep(2 * time.Second)
 }
 
 func addImports(s []string, idx int) []string {
@@ -121,7 +138,7 @@ func addComm(s []string, circ string, mainIdx int) []string {
 }
 
 func addEval(code []string, idx int, params, typesA []string) []string {
-	fmt.Println(params, typesA)
+
 	idx++
 	code[idx] = strings.ReplaceAll(code[idx], "myStringMatch", "eval"+strconv.Itoa(goCnt))
 	code[idx] = strings.Replace(code[idx], ")", ", "+strconv.Itoa(goCnt)+")", 1)

@@ -22,10 +22,9 @@ const evalBlock string = "func evalcID int) (bool){\nwg.Wait()\ncir := \"You did
 
 func main() {
 
-	inputFile := "./inDir/main.go"
+	inputFile := os.Args[1] + ".go"
 	outputFile := "./outDir/myMain.go"
 	//reading code from source
-	//fmt.Println(os.Args[0])
 	data, err := ioutil.ReadFile(inputFile)
 	if err != nil {
 		panic("Error Reading file")

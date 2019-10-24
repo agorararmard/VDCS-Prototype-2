@@ -27,10 +27,13 @@ const circuitBlock string = "type circuit struct {\nO    []bool `json:\"o\"`\nFe
 
 //const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- circuit) {fmt.Println(cir)\nfmt.Println(cID)\n//get the circuit in JSON format\n//Generate input wires\n//post to server\n//Wait for response\nchVDCSCommCircRes<-32\n}"
 const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- circuit) {file, _ := ioutil.ReadFile(cir + \".json\")\nk := circuit{}\nerr := json.Unmarshal([]byte(file), &k)\nif err != nil {\nlog.Fatal(err)\n}\nrand.Seed(int64(cID))\nk.CID = strconv.Itoa(rand.Int())\nsendToServerGarble(k)\n//Generate input wires\n//Wait for response\nk = getFromServerGarble(k.CID)\nchVDCSCommCircRes <- k\n}\n"
-const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan circuit) (bool){\ni:=<-chVDCSEvalCircRes\nfmt.Println(i)\ncir := \"You did it!\"\nfmt.Println(cir)\nfmt.Println(_inWire0)\nfmt.Println(_inWire1)\n//generate input wires for given inputs\n//fetch the garbled circuit with the cID\n//post to server\n//Wait for response\n return strings.Contains(string(_inWire0),string(_inWire1))\n}"
+const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan circuit) (bool){\n	//generate input wires for given inputs\nk := <-chVDCSEvalCircRes\nsendToServerEval(k, _inWire0, _inWire1)\nvar res []byte = getFromServerEval(k.CID)\nfmt.Println(res)\nreturn strings.Contains(string(_inWire0), string(_inWire1))\n}\n"
 
 const sendToGarbleBlock string = "func sendToServerGarble(k circuit) bool {\ncircuitJSON, err := json.Marshal(k)\nreq, err := http.NewRequest(\"POST\", \"http://localhost:8080/post\", bytes.NewBuffer(circuitJSON))\nreq.Header.Set(\"Content-Type\", \"application/json\")\nclient := &http.Client{}\nresp, err := client.Do(req)\nresp.Body.Close()\nif err != nil {\nlog.Fatal(err)\nreturn false\n}\nreturn true\n}\n"
 const getFromGarbleBlock string = "func getFromServerGarble(id string) (k circuit) {\niDJSON, err := json.Marshal(circuit{CID: id})\nreq, err := http.NewRequest(\"GET\", \"http://localhost:8080/get\", bytes.NewBuffer(iDJSON))\nreq.Header.Set(\"Content-Type\", \"application/json\")\nclient := &http.Client{}\nresp, err := client.Do(req)\nif err != nil {\nlog.Fatal(err)\n}\nbody, err := ioutil.ReadAll(resp.Body)\nerr = json.Unmarshal(body, &k)\nif err != nil {\nlog.Fatal(err)\n}\nresp.Body.Close()\nreturn\n}\n"
+
+const sendToEvalBlock string = "func sendToServerEval(k circuit, inWire0 []byte, inWire1 []byte) {\ncircuitJSON, err := json.Marshal(k)\nreq, err := http.NewRequest(\"POST\", \"http://localhost:8081/post\", bytes.NewBuffer(circuitJSON))\nreq.Header.Set(\"Content-Type\", \"application/json\")\nclient := &http.Client{}\nresp, err := client.Do(req)\nif err != nil {\nlog.Fatal(err)\n}\nresp.Body.Close()\n}\n"
+const getFromEvalBlock string = "func getFromServerEval(id string) []byte {\niDJSON, err := json.Marshal(circuit{CID: id})\nreq, err := http.NewRequest(\"GET\", \"http://localhost:8081/get\", bytes.NewBuffer(iDJSON))\nreq.Header.Set(\"Content-Type\", \"application/json\")\nclient := &http.Client{}\nresp, err := client.Do(req)\nif err != nil {\nlog.Fatal(err)\n}\nbody, err := ioutil.ReadAll(resp.Body)\nif err != nil {\nlog.Fatal(err)\n}\nresp.Body.Close()\nreturn body\n}\n"
 
 func main() {
 
@@ -235,6 +238,6 @@ func getTypes(code, params []string) (typesA []string) {
 }
 
 func addServerFuncs(code []string) []string {
-	code = append(code, append(strings.Split(sendToGarbleBlock, "\n"), strings.Split(getFromGarbleBlock, "\n")...)...)
+	code = append(code, append(strings.Split(sendToGarbleBlock, "\n"), append(strings.Split(sendToEvalBlock, "\n"), append(strings.Split(getFromGarbleBlock, "\n"), strings.Split(getFromEvalBlock, "\n")...)...)...)...)
 	return code
 }

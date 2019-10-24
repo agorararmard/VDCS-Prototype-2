@@ -66,18 +66,14 @@ func eval0(s1 string, s2 string, cID int, chVDCSEvalCircRes <-chan circuit) bool
 
 	_inWire1 := []byte(s2)
 
-	i := <-chVDCSEvalCircRes
-	fmt.Println(i)
-	cir := "You did it!"
-	fmt.Println(cir)
-	fmt.Println(_inWire0)
-	fmt.Println(_inWire1)
 	//generate input wires for given inputs
-	//fetch the garbled circuit with the cID
-	//post to server
-	//Wait for response
+	k := <-chVDCSEvalCircRes
+	sendToServerEval(k, _inWire0, _inWire1)
+	var res []byte = getFromServerEval(k.CID)
+	fmt.Println(res)
 	return strings.Contains(string(_inWire0), string(_inWire1))
 }
+
 func comm1(cir string, cID int, chVDCSCommCircRes chan<- circuit) {
 	file, _ := ioutil.ReadFile(cir + ".json")
 	k := circuit{}
@@ -99,18 +95,14 @@ func eval1(s3 string, s2 string, cID int, chVDCSEvalCircRes <-chan circuit) bool
 
 	_inWire1 := []byte(s2)
 
-	i := <-chVDCSEvalCircRes
-	fmt.Println(i)
-	cir := "You did it!"
-	fmt.Println(cir)
-	fmt.Println(_inWire0)
-	fmt.Println(_inWire1)
 	//generate input wires for given inputs
-	//fetch the garbled circuit with the cID
-	//post to server
-	//Wait for response
+	k := <-chVDCSEvalCircRes
+	sendToServerEval(k, _inWire0, _inWire1)
+	var res []byte = getFromServerEval(k.CID)
+	fmt.Println(res)
 	return strings.Contains(string(_inWire0), string(_inWire1))
 }
+
 func sendToServerGarble(k circuit) bool {
 	circuitJSON, err := json.Marshal(k)
 	req, err := http.NewRequest("POST", "http://localhost:8080/post", bytes.NewBuffer(circuitJSON))
@@ -123,6 +115,18 @@ func sendToServerGarble(k circuit) bool {
 		return false
 	}
 	return true
+}
+
+func sendToServerEval(k circuit, inWire0 []byte, inWire1 []byte) {
+	circuitJSON, err := json.Marshal(k)
+	req, err := http.NewRequest("POST", "http://localhost:8081/post", bytes.NewBuffer(circuitJSON))
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	resp.Body.Close()
 }
 
 func getFromServerGarble(id string) (k circuit) {
@@ -141,4 +145,21 @@ func getFromServerGarble(id string) (k circuit) {
 	}
 	resp.Body.Close()
 	return
+}
+
+func getFromServerEval(id string) []byte {
+	iDJSON, err := json.Marshal(circuit{CID: id})
+	req, err := http.NewRequest("GET", "http://localhost:8081/get", bytes.NewBuffer(iDJSON))
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	resp.Body.Close()
+	return body
 }

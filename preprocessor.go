@@ -15,10 +15,10 @@ var goCnt int
 
 var supportedFunc [1]string = [1]string{"myStringMatch"}
 
-var mapImports map[string]bool = map[string]bool{"fmt": false, "sync": false}
+var mapImports map[string]bool = map[string]bool{"fmt": false, "sync": true}
 
-const commBlock string = "func comm(cir string,cID int) {\nfmt.Println(cir)\nfmt.Println(cID)\n//get the circuit in JSON format\n//Generate input wires\n//post to server\n//Wait for response\nwg.Done()}"
-const evalBlock string = "func evalcID int) (bool){\nwg.Wait()\ncir := \"You did it!\"\nfmt.Println(cir)\n//generate input wires for given inputs\n//fetch the garbled circuit with the cID\n//post to server\n//Wait for response\n return true\n}"
+const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- int) {fmt.Println(cir)\nfmt.Println(cID)\n//get the circuit in JSON format\n//Generate input wires\n//post to server\n//Wait for response\nchVDCSCommCircRes<-32\n}"
+const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan int) (bool){\ni:=<-chVDCSEvalCircRes\nfmt.Println(i)\ncir := \"You did it!\"\nfmt.Println(cir)\nfmt.Println(_inWire0)\nfmt.Println(_inWire1)\n//generate input wires for given inputs\n//fetch the garbled circuit with the cID\n//post to server\n//Wait for response\n return true\n}"
 
 func main() {
 
@@ -78,14 +78,16 @@ func main() {
 			for _, val := range typesA {
 				circ += "_" + val
 			}
-			proc = addComm(proc, circ, mainIdx)
-			proc = addEval(proc, i+1, params, typesA)
+			var chName string
+			proc, chName = addComm(proc, circ, mainIdx)
+
+			i += 2
+			loopLen += 2
+
+			proc = addEval(proc, i+1, params, typesA, chName)
 			goCnt++
-			i++
-			loopLen++
 		}
 	}
-	proc = addWGADD(proc, mainIdx)
 
 	/*for _, val := range proc {
 		fmt.Println(string(val))
@@ -118,35 +120,37 @@ func addImports(s []string, idx int) []string {
 			concat += "\"" + key + "\"\n"
 		}
 	}
-	concat = "import (\n" + concat + ")\nvar wg = sync.WaitGroup{}\n"
+	concat = "import (\n" + concat + ")\n"
 
 	s = append(s[:idx+1], append(strings.Split(concat, "\n"), s[idx+1:]...)...)
 	return s
 }
 
-func addComm(s []string, circ string, mainIdx int) []string {
-
-	var call string = "go comm" + strconv.Itoa(goCnt) + "(\"" + circ + "\"," + strconv.Itoa(goCnt) + ")"
+func addComm(s []string, circ string, mainIdx int) ([]string, string) {
+	var chName string = "_" + circ + "Ch" + strconv.Itoa(goCnt)
+	var call string = chName + ":= make(chan int)\ngo comm" + strconv.Itoa(goCnt) + "(\"" + circ + "\"," + strconv.Itoa(goCnt) + "," + chName + ")"
 	//fmt.Println(call)
 	s = append(s[:mainIdx+1], append(strings.Split(call, "\n"), s[mainIdx+1:]...)...)
 
 	stpIdx := strings.Index(commBlock, "comm")
 	sigComm := commBlock[:stpIdx+4] + strconv.Itoa(goCnt) + commBlock[stpIdx+4:]
 	s = append(s, strings.Split(sigComm, "\n")...)
-	return s
+	return s, chName
 }
 
-func addEval(code []string, idx int, params, typesA []string) []string {
-
-	idx++
+func addEval(code []string, idx int, params, typesA []string, chName string) []string {
 	code[idx] = strings.ReplaceAll(code[idx], "myStringMatch", "eval"+strconv.Itoa(goCnt))
-	code[idx] = strings.Replace(code[idx], ")", ", "+strconv.Itoa(goCnt)+")", 1)
+	code[idx] = strings.Replace(code[idx], ")", ", "+strconv.Itoa(goCnt)+","+chName+")", 1)
 	stpIdx := strings.Index(evalBlock, "eval")
 	sigEval := evalBlock[:stpIdx+4] + strconv.Itoa(goCnt) + "("
+	var inWires string = "{"
 	for k, val := range params {
 		sigEval += val + " " + strings.Split(typesA[k], "_")[0] + ","
+		inWires += "\n_inWire" + strconv.Itoa(k) + ":=[]byte(" + val + ")\n"
 	}
+
 	sigEval += evalBlock[stpIdx+4:]
+	sigEval = strings.Replace(sigEval, "{", inWires, 1)
 	code = append(code, strings.Split(sigEval, "\n")...)
 	return code
 }
@@ -170,7 +174,7 @@ Loop:
 func getTypes(code, params []string) (typesA []string) {
 
 	n := "_8"
-	k := "_4"
+	k := "_8"
 
 	inc := 0
 

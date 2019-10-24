@@ -22,3 +22,7 @@ func main() {
 		fmt.Println("No they aren't!")
 	}
 }
+
+func myStringMatch(a, b string) bool {
+	return true
+}

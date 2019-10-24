@@ -4,7 +4,7 @@ import (
 	"fmt"
 )
 
-To making it actually do func main() {
+func main() {
 	var s1 string = "Hello World!"
 	var s2 string = "lo Wo"
 	//VDCS

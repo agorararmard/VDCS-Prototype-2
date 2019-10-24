@@ -15,10 +15,10 @@ var goCnt int
 
 var supportedFunc [1]string = [1]string{"myStringMatch"}
 
-var mapImports map[string]bool = map[string]bool{"fmt": false, "sync": true}
+var mapImports map[string]bool = map[string]bool{"fmt": false, "strings": false, "sync": true}
 
 const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- int) {fmt.Println(cir)\nfmt.Println(cID)\n//get the circuit in JSON format\n//Generate input wires\n//post to server\n//Wait for response\nchVDCSCommCircRes<-32\n}"
-const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan int) (bool){\ni:=<-chVDCSEvalCircRes\nfmt.Println(i)\ncir := \"You did it!\"\nfmt.Println(cir)\nfmt.Println(_inWire0)\nfmt.Println(_inWire1)\n//generate input wires for given inputs\n//fetch the garbled circuit with the cID\n//post to server\n//Wait for response\n return true\n}"
+const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan int) (bool){\ni:=<-chVDCSEvalCircRes\nfmt.Println(i)\ncir := \"You did it!\"\nfmt.Println(cir)\nfmt.Println(_inWire0)\nfmt.Println(_inWire1)\n//generate input wires for given inputs\n//fetch the garbled circuit with the cID\n//post to server\n//Wait for response\n return strings.Contains(string(_inWire0),string(_inWire1))\n}"
 
 func main() {
 

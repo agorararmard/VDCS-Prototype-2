@@ -3,10 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
-	"os/exec"
-	"runtime"
 	"strconv"
 	"strings"
 )
@@ -15,10 +12,25 @@ var goCnt int
 
 var supportedFunc [1]string = [1]string{"myStringMatch"}
 
-var mapImports map[string]bool = map[string]bool{"fmt": false, "strings": false, "sync": true}
+var mapImports map[string]bool = map[string]bool{
+	"fmt":           false,
+	"strings":       false,
+	"net/http":      false,
+	"bytes":         false,
+	"encoding/json": false,
+	"io/ioutil":     false,
+	"log":           false,
+	"math/rand":     false,
+	"strconv":       false}
 
-const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- int) {fmt.Println(cir)\nfmt.Println(cID)\n//get the circuit in JSON format\n//Generate input wires\n//post to server\n//Wait for response\nchVDCSCommCircRes<-32\n}"
-const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan int) (bool){\ni:=<-chVDCSEvalCircRes\nfmt.Println(i)\ncir := \"You did it!\"\nfmt.Println(cir)\nfmt.Println(_inWire0)\nfmt.Println(_inWire1)\n//generate input wires for given inputs\n//fetch the garbled circuit with the cID\n//post to server\n//Wait for response\n return strings.Contains(string(_inWire0),string(_inWire1))\n}"
+const circuitBlock string = "type circuit struct {\nO    []bool `json:\"o\"`\nFeed string `json:\"feed\"`\nCID  string `json:\"key\"`\n}\n"
+
+//const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- circuit) {fmt.Println(cir)\nfmt.Println(cID)\n//get the circuit in JSON format\n//Generate input wires\n//post to server\n//Wait for response\nchVDCSCommCircRes<-32\n}"
+const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- circuit) {file, _ := ioutil.ReadFile(cir + \".json\")\nk := circuit{}\nerr := json.Unmarshal([]byte(file), &k)\nif err != nil {\nlog.Fatal(err)\n}\nrand.Seed(int64(cID))\nk.CID = strconv.Itoa(rand.Int())\nsendToServerGarble(k)\n//Generate input wires\n//Wait for response\nk = getFromServerGarble(k.CID)\nchVDCSCommCircRes <- k\n}\n"
+const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan circuit) (bool){\ni:=<-chVDCSEvalCircRes\nfmt.Println(i)\ncir := \"You did it!\"\nfmt.Println(cir)\nfmt.Println(_inWire0)\nfmt.Println(_inWire1)\n//generate input wires for given inputs\n//fetch the garbled circuit with the cID\n//post to server\n//Wait for response\n return strings.Contains(string(_inWire0),string(_inWire1))\n}"
+
+const sendToGarbleBlock string = "func sendToServerGarble(k circuit) bool {\ncircuitJSON, err := json.Marshal(k)\nreq, err := http.NewRequest(\"POST\", \"http://localhost:8080/post\", bytes.NewBuffer(circuitJSON))\nreq.Header.Set(\"Content-Type\", \"application/json\")\nclient := &http.Client{}\nresp, err := client.Do(req)\nresp.Body.Close()\nif err != nil {\nlog.Fatal(err)\nreturn false\n}\nreturn true\n}\n"
+const getFromGarbleBlock string = "func getFromServerGarble(id string) (k circuit) {\niDJSON, err := json.Marshal(circuit{CID: id})\nreq, err := http.NewRequest(\"GET\", \"http://localhost:8080/get\", bytes.NewBuffer(iDJSON))\nreq.Header.Set(\"Content-Type\", \"application/json\")\nclient := &http.Client{}\nresp, err := client.Do(req)\nif err != nil {\nlog.Fatal(err)\n}\nbody, err := ioutil.ReadAll(resp.Body)\nerr = json.Unmarshal(body, &k)\nif err != nil {\nlog.Fatal(err)\n}\nresp.Body.Close()\nreturn\n}\n"
 
 func main() {
 
@@ -89,6 +101,8 @@ func main() {
 		}
 	}
 
+	proc = addServerFuncs(proc)
+
 	/*for _, val := range proc {
 		fmt.Println(string(val))
 	}*/
@@ -100,17 +114,18 @@ func main() {
 		fmt.Println(err)
 	}
 
-	cmd := exec.Command("go", "run", outputFile)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("tasklist")
-	}
-	err = cmd.Run()
-	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
-	}
-	//time.Sleep(2 * time.Second)
+	/*
+		cmd := exec.Command("go", "run", outputFile)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("tasklist")
+		}
+		err = cmd.Run()
+		if err != nil {
+			log.Fatalf("cmd.Run() failed with %s\n", err)
+		}
+	*/
 }
 
 func addImports(s []string, idx int) []string {
@@ -120,7 +135,7 @@ func addImports(s []string, idx int) []string {
 			concat += "\"" + key + "\"\n"
 		}
 	}
-	concat = "import (\n" + concat + ")\n"
+	concat = "import (\n" + concat + ")\n" + circuitBlock
 
 	s = append(s[:idx+1], append(strings.Split(concat, "\n"), s[idx+1:]...)...)
 	return s
@@ -128,7 +143,7 @@ func addImports(s []string, idx int) []string {
 
 func addComm(s []string, circ string, mainIdx int) ([]string, string) {
 	var chName string = "_" + circ + "Ch" + strconv.Itoa(goCnt)
-	var call string = chName + ":= make(chan int)\ngo comm" + strconv.Itoa(goCnt) + "(\"" + circ + "\"," + strconv.Itoa(goCnt) + "," + chName + ")"
+	var call string = chName + ":= make(chan circuit)\ngo comm" + strconv.Itoa(goCnt) + "(\"" + circ + "\"," + strconv.Itoa(goCnt) + "," + chName + ")"
 	//fmt.Println(call)
 	s = append(s[:mainIdx+1], append(strings.Split(call, "\n"), s[mainIdx+1:]...)...)
 
@@ -219,8 +234,7 @@ func getTypes(code, params []string) (typesA []string) {
 	return
 }
 
-func addWGADD(code []string, mainIdx int) []string {
-	call := "wg.Add(" + strconv.Itoa(goCnt) + ")\n"
-	code = append(code[:mainIdx+1], append(strings.Split(call, "\n"), code[mainIdx+1:]...)...)
+func addServerFuncs(code []string) []string {
+	code = append(code, append(strings.Split(sendToGarbleBlock, "\n"), strings.Split(getFromGarbleBlock, "\n")...)...)
 	return code
 }

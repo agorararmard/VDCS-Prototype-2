@@ -7,6 +7,7 @@ import (
 func main() {
 	var s1 string = "Hello World!"
 	var s2 string = "lo Wo"
+
 	//VDCS
 	if myStringMatch(s1, s2) == true {
 		fmt.Println("Yes they are!")
@@ -22,6 +23,6 @@ func main() {
 	}
 }
 
-func myStringMatch(a, b string) bool {
-	return true
+func myStringMatch(a, b string) (true bool) {
+	return
 }

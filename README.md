@@ -2,6 +2,7 @@
 This is an experiment for milestone 2 using Go
 ## Preprocessor:
 To do:
-- add communication with the server
-- read the circuit from a json file as a json object
 - add garbling input wires
+- add garbling in the server side
+- serve multiple clients
+- define structs, sendToServerEval, sendToServerGarble, getFromServerEval,getFromServerGarble, comm in another go file and compile both together

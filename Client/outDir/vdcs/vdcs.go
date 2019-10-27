@@ -1,4 +1,4 @@
-package vdcsimports
+package vdcs
 
 import (
 	"bytes"
@@ -30,7 +30,7 @@ type ResEval struct {
 	ComID
 }
 
-func comm(cir string, cID int, chVDCSCommCircRes chan<- GarbledCircuit) {
+func Comm(cir string, cID int, chVDCSCommCircRes chan<- GarbledCircuit) {
 	file, _ := ioutil.ReadFile(cir + ".json")
 	k := Circuit{}
 	err := json.Unmarshal([]byte(file), &k)
@@ -39,15 +39,15 @@ func comm(cir string, cID int, chVDCSCommCircRes chan<- GarbledCircuit) {
 	}
 	rand.Seed(int64(cID))
 	k.CID = strconv.Itoa(rand.Int())
-	sendToServerGarble(k)
+	SendToServerGarble(k)
 	//Generate input wires
 	//Wait for response
-	var g GarbledCircuit = getFromServerGarble(k.CID)
+	var g GarbledCircuit = GetFromServerGarble(k.CID)
 	//Validate Correctness of result
 	chVDCSCommCircRes <- g
 }
 
-func sendToServerGarble(k Circuit) bool {
+func SendToServerGarble(k Circuit) bool {
 	circuitJSON, err := json.Marshal(k)
 	req, err := http.NewRequest("POST", "http://localhost:8080/post", bytes.NewBuffer(circuitJSON))
 	req.Header.Set("Content-Type", "application/json")
@@ -61,7 +61,7 @@ func sendToServerGarble(k Circuit) bool {
 	return true
 }
 
-func sendToServerEval(k GarbledCircuit) {
+func SendToServerEval(k GarbledCircuit) {
 	circuitJSON, err := json.Marshal(k)
 	req, err := http.NewRequest("POST", "http://localhost:8081/post", bytes.NewBuffer(circuitJSON))
 	req.Header.Set("Content-Type", "application/json")
@@ -73,7 +73,7 @@ func sendToServerEval(k GarbledCircuit) {
 	resp.Body.Close()
 }
 
-func getFromServerGarble(id string) (k GarbledCircuit) {
+func GetFromServerGarble(id string) (k GarbledCircuit) {
 	iDJSON, err := json.Marshal(ComID{CID: id})
 	req, err := http.NewRequest("GET", "http://localhost:8080/get", bytes.NewBuffer(iDJSON))
 	req.Header.Set("Content-Type", "application/json")
@@ -91,7 +91,7 @@ func getFromServerGarble(id string) (k GarbledCircuit) {
 	return
 }
 
-func getFromServerEval(id string) []byte {
+func GetFromServerEval(id string) []byte {
 	iDJSON, err := json.Marshal(ComID{CID: id})
 	req, err := http.NewRequest("GET", "http://localhost:8081/get", bytes.NewBuffer(iDJSON))
 	req.Header.Set("Content-Type", "application/json")

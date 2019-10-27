@@ -1,0 +1,31 @@
+{
+    "MyStringMatch_string_8_string_8": {
+    "i0":[0,1,0,1],
+    "i1":[0,0,1,1],
+    "o":[1,0,0,1],
+    "Feed": "all"
+    },
+
+    "MyEqual":{
+        "InputGates":{
+            "0":{                
+                "table":[1,0,0,1]
+            },
+            "1":{
+                "table":[1,0,0,1]
+            }
+        },
+        "MiddleGates":{
+
+        },
+        "OutputGates":{
+            "3":{
+                "in": ["0","1"],
+                "table": [0,0,0,1]
+            }
+        }
+
+    }
+}
+
+

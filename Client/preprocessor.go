@@ -28,7 +28,7 @@ var mapImports map[string]bool = map[string]bool{
 
 //const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- circuit) {fmt.Println(cir)\nfmt.Println(cID)\n//get the circuit in JSON format\n//Generate input wires\n//post to server\n//Wait for response\nchVDCSCommCircRes<-32\n}"
 //const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- GarbledCircuit) {file, _ := ioutil.ReadFile(cir + \".json\")\nk := circuit{}\nerr := json.Unmarshal([]byte(file), &k)\nif err != nil {\nlog.Fatal(err)\n}\nrand.Seed(int64(cID))\nk.CID = strconv.Itoa(rand.Int())\nsendToServerGarble(k)\n//Generate input wires\n//Wait for response\nvar g GarbledCircuit = getFromServerGarble(k.CID)\n//Validate Correctness of result\nchVDCSCommCircRes <- g\n}\n"
-const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan vdcs.GarbledCircuit) (bool){\n	//generate input wires for given inputs\nk := <-chVDCSEvalCircRes\nk.InWire0 = _inWire0\nk.InWire1 = _inWire1\nvdcs.SendToServerEval(k)\nvar res []byte = vdcs.GetFromServerEval(k.CID)\nfmt.Println(string(res))\nreturn strings.Contains(string(_inWire0), string(_inWire1))\n}\n"
+const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan vdcs.GarbledMessage) (bool){\n	//generate input wires for given inputs\nk := <-chVDCSEvalCircRes\n	k.InputWires = []vdcs.Wire{vdcs.Wire{WireLabel: _inWire0}, vdcs.Wire{WireLabel: _inWire1}}\n//flush output wires\nvdcs.SendToServerEval(k)\nvar res []byte = vdcs.GetFromServerEval(k.CID)\n//validate and decode res\nfmt.Println(string(res))\nreturn strings.Contains(string(_inWire0), string(_inWire1))\n}\n"
 
 //const sendToGarbleBlock string = "func sendToServerGarble(k circuit) bool {\ncircuitJSON, err := json.Marshal(k)\nreq, err := http.NewRequest(\"POST\", \"http://localhost:8080/post\", bytes.NewBuffer(circuitJSON))\nreq.Header.Set(\"Content-Type\", \"application/json\")\nclient := &http.Client{}\nresp, err := client.Do(req)\nresp.Body.Close()\nif err != nil {\nlog.Fatal(err)\nreturn false\n}\nreturn true\n}\n"
 //const getFromGarbleBlock string = "func getFromServerGarble(id string) (k GarbledCircuit) {\niDJSON, err := json.Marshal(ComID{CID: id})\nreq, err := http.NewRequest(\"GET\", \"http://localhost:8080/get\", bytes.NewBuffer(iDJSON))\nreq.Header.Set(\"Content-Type\", \"application/json\")\nclient := &http.Client{}\nresp, err := client.Do(req)\nif err != nil {\nlog.Fatal(err)\n}\nbody, err := ioutil.ReadAll(resp.Body)\nerr = json.Unmarshal(body, &k)\nif err != nil {\nlog.Fatal(err)\n}\nresp.Body.Close()\nreturn\n}\n"
@@ -147,7 +147,7 @@ func addImports(s []string, idx int) []string {
 
 func addComm(s []string, circ string, mainIdx int) ([]string, string) {
 	var chName string = "_" + circ + "Ch" + strconv.Itoa(goCnt)
-	var call string = chName + ":= make(chan vdcs.GarbledCircuit)\ngo vdcs.Comm" + "(\"" + circ + "\"," + strconv.Itoa(goCnt) + "," + chName + ")"
+	var call string = chName + ":= make(chan vdcs.GarbledMessage)\ngo vdcs.Comm" + "(\"" + circ + "\"," + strconv.Itoa(goCnt) + "," + chName + ")"
 	//+ strconv.Itoa(goCnt) + was deleted from the above line
 	//fmt.Println(call)
 	s = append(s[:mainIdx+1], append(strings.Split(call, "\n"), s[mainIdx+1:]...)...)

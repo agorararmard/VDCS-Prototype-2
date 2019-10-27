@@ -6,40 +6,30 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"./vdcs"
 )
 
-type ComID struct {
-	CID string `json:"key"`
-}
-type GarbledCircuit struct {
-	GarbledValues []byte `json:"garbledValues"`
-	InWire0       []byte `json:"inWire0"`
-	InWire1       []byte `json:"inWire1"`
-	ComID
-}
-type ResEval struct {
-	Res []byte `json:"res"`
-	ComID
-}
-
-var pendingEval map[string]GarbledCircuit
-var completedEval map[string]ResEval
+var pendingEval map[string]vdcs.GarbledMessage
+var completedEval map[string]vdcs.ResEval
 
 func main() {
 	server()
 }
 
 func evalCircuit(ID string) {
-	completedEval[ID] = ResEval{
-		Res:   []byte("You did it!"),
-		comID: comID{CID: ID},
+	completedEval[ID] = vdcs.ResEval{
+		Res: []byte("You did it!"),
+		ComID: vdcs.ComID{
+			CID: ID,
+		},
 	}
 	delete(pendingEval, ID)
 }
 
 func postHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		var x GarbledCircuit
+		var x vdcs.GarbledMessage
 		jsn, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Fatal("Error reading", err)
@@ -55,7 +45,7 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 
 func getHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		var x comID
+		var x vdcs.ComID
 		jsn, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Fatal("Error reading", err)
@@ -66,11 +56,11 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, ok := pendingEval[x.CID]; ok; {
 		}
+
 		value, ok := completedEval[x.CID]
 
 		if ok {
-			response := value
-			responseJSON, err := json.Marshal(response)
+			responseJSON, err := json.Marshal(value)
 			if err != nil {
 				fmt.Fprintf(w, "error %s", err)
 			}

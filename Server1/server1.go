@@ -6,43 +6,31 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+
+	"./vdcs"
 )
 
-type ComID struct {
-	CID string `json:"key"`
-}
-
-type Circuit struct {
-	O    []bool `json:"o"`
-	Feed string `json:"feed"`
-	ComID
-	R string `json:"randomness"`
-}
-type GarbledCircuit struct {
-	GarbledValues []byte `json:"garbledValues"`
-	InWire0       []byte `json:"inWire0"`
-	InWire1       []byte `json:"inWire1"`
-	ComID
-}
-
-var pendingGarble = make(map[string]Circuit)
-var completedGarble = make(map[string]GarbledCircuit)
+var pendingGarble = make(map[string]vdcs.CircuitMessage)
+var completedGarble = make(map[string]vdcs.GarbledMessage)
 
 func main() {
 	server()
 }
 
 func garbleCircuit(ID string) {
-	completedGarble[ID] = GarbledCircuit{
-		GarbledValues: []byte("Hello World"),
-		ComID:         ComID{CID: ID},
+	completedGarble[ID] = vdcs.GarbledMessage{
+		GarbledCircuit: vdcs.GarbledCircuit{
+			ComID: vdcs.ComID{
+				CID: ID,
+			},
+		},
 	}
 	delete(pendingGarble, ID)
 }
 
 func postHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "POST" {
-		var x Circuit
+		var x vdcs.CircuitMessage
 		jsn, err := ioutil.ReadAll(r.Body)
 
 		if err != nil {
@@ -62,7 +50,7 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 
 func getHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
-		var x ComID
+		var x vdcs.ComID
 		jsn, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			log.Fatal("Error reading", err)
@@ -77,8 +65,7 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 
 		value, ok := completedGarble[x.CID]
 		if ok {
-			response := value
-			responseJSON, err := json.Marshal(response)
+			responseJSON, err := json.Marshal(value)
 			if err != nil {
 				fmt.Fprintf(w, "error %s", err)
 			}

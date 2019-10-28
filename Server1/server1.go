@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"sync"
 
 	"./vdcs"
 )
@@ -13,11 +14,15 @@ import (
 var pendingGarble = make(map[string]vdcs.CircuitMessage)
 var completedGarble = make(map[string]vdcs.GarbledMessage)
 
+var mutexC = sync.RWMutex{}
+var mutexP = sync.RWMutex{}
+
 func main() {
 	server()
 }
 
 func garbleCircuit(ID string) {
+	mutexC.Lock()
 	completedGarble[ID] = vdcs.GarbledMessage{
 		GarbledCircuit: vdcs.GarbledCircuit{
 			ComID: vdcs.ComID{
@@ -25,8 +30,17 @@ func garbleCircuit(ID string) {
 			},
 		},
 	}
+	mutexC.Unlock()
+
+	mutexC.Lock()
+	mutexP.RLock()
 	completedGarble[ID] = vdcs.Garble(pendingGarble[ID])
+	mutexP.RUnlock()
+	mutexC.Unlock()
+
+	mutexP.Lock()
 	delete(pendingGarble, ID)
+	mutexP.Unlock()
 }
 
 func postHandler(w http.ResponseWriter, r *http.Request) {
@@ -43,8 +57,11 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatal("bad decode", err)
 		}
-
+		fmt.Println("CID:", x.CID)
+		mutexP.Lock()
 		pendingGarble[x.CID] = x
+		mutexP.Unlock()
+		fmt.Println(x)
 		go garbleCircuit(x.CID)
 	}
 }
@@ -60,11 +77,14 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatal("bad decode", err)
 		}
-
+		mutexP.RLock()
 		for _, ok := pendingGarble[x.CID]; ok; {
 		}
+		mutexP.RUnlock()
 
+		mutexC.RLock()
 		value, ok := completedGarble[x.CID]
+		mutexC.RUnlock()
 		if ok {
 			responseJSON, err := json.Marshal(value)
 			if err != nil {
@@ -72,7 +92,9 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(responseJSON)
+			mutexC.Lock()
 			delete(completedGarble, x.CID)
+			mutexC.Unlock()
 		}
 	}
 }

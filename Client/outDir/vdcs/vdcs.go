@@ -93,6 +93,7 @@ func Comm(cir string, cID int, chVDCSCommCircRes chan<- GarbledMessage) {
 			LblLength: 16, //Should be rand.Int()%16 + 16
 		},
 	}
+	fmt.Println(mCirc)
 
 	for !SendToServerGarble(mCirc) {
 
@@ -105,16 +106,25 @@ func Comm(cir string, cID int, chVDCSCommCircRes chan<- GarbledMessage) {
 
 	arrIn := YaoGarbledCkt_in(mCirc.Rin, mCirc.LblLength, inputSize)
 	arrOut := YaoGarbledCkt_out(mCirc.Rout, mCirc.LblLength, outputSize)
+	var gcm GarbledMessage
+	var oke bool
+	for gcm, oke = GetFromServerGarble(mCirc.CID); !oke; {
 
-	var gcm GarbledMessage = GetFromServerGarble(mCirc.CID)
+	}
 	//Validate Correctness of result
+	fmt.Println(gcm)
+	fmt.Println("\nHere:\n", arrIn, "\nThere\n", arrOut)
+
 	for k, val := range gcm.InputWires {
 		if bytes.Compare(arrIn[k], val.WireLabel) != 0 {
+			fmt.Println("I was cheated on this: ", arrIn[k], val.WireLabel)
 			panic("The server has cheated me") //redo the process, by recovering from panic by recalling comm
 		}
 	}
 	for k, val := range gcm.OutputWires {
 		if bytes.Compare(arrOut[k], val.WireLabel) != 0 {
+
+			fmt.Println("I was cheated on this: ", arrOut[k], val.WireLabel)
 			panic("The server has cheated me") //redo the process, by recovering from panic by recalling comm
 		}
 	}
@@ -125,70 +135,83 @@ func Comm(cir string, cID int, chVDCSCommCircRes chan<- GarbledMessage) {
 func SendToServerGarble(k CircuitMessage) bool {
 	circuitJSON, err := json.Marshal(k)
 	req, err := http.NewRequest("POST", "http://localhost:8080/post", bytes.NewBuffer(circuitJSON))
+	if err != nil {
+		fmt.Println("generating request failed")
+	}
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	resp.Body.Close()
 	if err != nil {
-		log.Fatal(err)
+		//log.Fatal(err)
 		return false
 	}
 	return true
 }
 
-func GetFromServerGarble(id string) (k GarbledMessage) {
+func GetFromServerGarble(id string) (k GarbledMessage, ok bool) {
+	ok = false //assume failure
 	iDJSON, err := json.Marshal(ComID{CID: id})
 	req, err := http.NewRequest("GET", "http://localhost:8080/get", bytes.NewBuffer(iDJSON))
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(body, &k)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	resp.Body.Close()
 	if k.CID != id {
 		panic("The server sent me the wrong circuit") //replace with a request repeat.
 	}
+	ok = true
 	return
 }
 
-func SendToServerEval(k GarbledMessage) {
+func SendToServerEval(k GarbledMessage) bool {
 	circuitJSON, err := json.Marshal(k)
 	req, err := http.NewRequest("POST", "http://localhost:8081/post", bytes.NewBuffer(circuitJSON))
+	if err != nil {
+		return false
+	}
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		return false
 	}
 	resp.Body.Close()
+	return true
 }
 
-func GetFromServerEval(id string) [][]byte {
+func GetFromServerEval(id string) (res [][]byte, ok bool) {
+	ok = false // assume failure
 	iDJSON, err := json.Marshal(ComID{CID: id})
 	req, err := http.NewRequest("GET", "http://localhost:8081/get", bytes.NewBuffer(iDJSON))
 	req.Header.Set("Content-Type", "application/json")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	body, err := ioutil.ReadAll(resp.Body)
 	var k ResEval
 	err = json.Unmarshal(body, &k)
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	resp.Body.Close()
 	if k.CID != id {
 		panic("The server sent me the wrong circuit") //replace with a request repeat.
 	}
-	return k.Res
+	res = k.Res
+	fmt.Println("Result Returned", k.Res)
+	ok = true
+	return
 }
 
 func GenNRandNumbers(n int, length int, r int64, considerR bool) [][]byte {
@@ -458,9 +481,9 @@ func Garble(circ CircuitMessage) GarbledMessage {
 		})
 
 		outputWiresGC = append(outputWiresGC, Wire{
-			WireLabel: arrIn[wOutCnt],
+			WireLabel: arrOut[wOutCnt],
 		}, Wire{
-			WireLabel: arrIn[wOutCnt+1],
+			WireLabel: arrOut[wOutCnt+1],
 		})
 		wOutCnt += 2
 
@@ -560,6 +583,9 @@ func Evaluate(gc GarbledMessage) (result ResEval) {
 				}
 				break
 			}
+		}
+		if (bytes.Compare(outWires[val.GateID].WireLabel, Wire{}.WireLabel)) != 0 {
+			fmt.Println("Fail Evaluation")
 		}
 	}
 

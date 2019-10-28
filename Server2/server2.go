@@ -13,31 +13,29 @@ import (
 
 var pendingEval = make(map[string]vdcs.GarbledMessage)
 var completedEval = make(map[string]vdcs.ResEval)
-var mutexP = sync.RWMutex{}
-var mutexC = sync.RWMutex{}
+var mutex = sync.RWMutex{}
 
 func main() {
 	server()
 }
 
 func evalCircuit(ID string) {
-	mutexC.Lock()
+	mutex.Lock()
 	completedEval[ID] = vdcs.ResEval{
 		ComID: vdcs.ComID{
 			CID: ID,
 		},
 	}
-	mutexC.Unlock()
+	mutex.Unlock()
 
-	mutexC.Lock()
-	mutexP.RLock()
+	mutex.Lock()
 	completedEval[ID] = vdcs.Evaluate(pendingEval[ID])
-	mutexP.RUnlock()
-	mutexC.Unlock()
+	fmt.Println("Completed Eval before send: ", completedEval[ID])
+	mutex.Unlock()
 
-	mutexP.Lock()
+	mutex.Lock()
 	delete(pendingEval, ID)
-	mutexP.Unlock()
+	mutex.Unlock()
 }
 
 func postHandler(w http.ResponseWriter, r *http.Request) {
@@ -51,10 +49,10 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatal("bad decode", err)
 		}
-		mutexP.Lock()
+		mutex.Lock()
 		pendingEval[x.CID] = x
 		fmt.Println("Pending Evaluation: ", pendingEval[x.CID])
-		mutexP.Unlock()
+		mutex.Unlock()
 		go evalCircuit(x.CID)
 	}
 }
@@ -70,15 +68,15 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatal("bad decode", err)
 		}
-		mutexP.RLock()
+		mutex.RLock()
 		for _, ok := pendingEval[x.CID]; ok; {
 		}
-		mutexP.RUnlock()
+		mutex.RUnlock()
 
-		mutexC.RLock()
+		mutex.RLock()
 		value, ok := completedEval[x.CID]
 		fmt.Println("Completed Execution: ", completedEval[x.CID])
-		mutexC.RUnlock()
+		mutex.RUnlock()
 
 		if ok {
 			responseJSON, err := json.Marshal(value)
@@ -87,9 +85,9 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(responseJSON)
-			mutexC.Lock()
+			mutex.Lock()
 			delete(completedEval, x.CID)
-			mutexC.Unlock()
+			mutex.Unlock()
 		}
 	}
 }

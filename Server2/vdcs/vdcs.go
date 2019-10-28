@@ -111,6 +111,8 @@ func Comm(cir string, cID int, chVDCSCommCircRes chan<- GarbledMessage) {
 	for gcm, oke = GetFromServerGarble(mCirc.CID); !oke; {
 
 	}
+
+	//gcm = Garble(mCirc)
 	//Validate Correctness of result
 	fmt.Println(gcm)
 	fmt.Println("\nHere:\n", arrIn, "\nThere\n", arrOut)
@@ -213,7 +215,6 @@ func GetFromServerEval(id string) (res [][]byte, ok bool) {
 	ok = true
 	return
 }
-
 func GenNRandNumbers(n int, length int, r int64, considerR bool) [][]byte {
 	if considerR {
 		rand.Seed(r)
@@ -584,7 +585,7 @@ func Evaluate(gc GarbledMessage) (result ResEval) {
 				break
 			}
 		}
-		if (bytes.Compare(outWires[val.GateID].WireLabel, Wire{}.WireLabel)) != 0 {
+		if (bytes.Compare(outWires[val.GateID].WireLabel, Wire{}.WireLabel)) == 0 {
 			fmt.Println("Fail Evaluation")
 		}
 	}

@@ -287,9 +287,9 @@ func Garble(circ vdcs.CircuitMessage) vdcs.GarbledMessage {
 		})
 
 		outputWiresGC = append(outputWiresGC, vdcs.Wire{
-			WireLabel: arrIn[wOutCnt],
+			WireLabel: arrOut[wOutCnt],
 		}, vdcs.Wire{
-			WireLabel: arrIn[wOutCnt+1],
+			WireLabel: arrOut[wOutCnt+1],
 		})
 		wOutCnt += 2
 
@@ -457,15 +457,30 @@ func main() {
 	arrIn := vdcs.YaoGarbledCkt_in(mCirc.Rin, mCirc.LblLength, inputSize)
 	arrOut := vdcs.YaoGarbledCkt_out(mCirc.Rout, mCirc.LblLength, outputSize)
 	//validate input output wires
-	var myInWires []vdcs.Wire
-	for i := 0; i < len(arrIn)-2; i += 2 {
+	/*	var myInWires []vdcs.Wire
+		for i := 0; i < len(arrIn)-2; i += 2 {
+			myInWires = append(myInWires, vdcs.Wire{
+				WireLabel: arrIn[i],
+			})
+		} // 000 == 100
 		myInWires = append(myInWires, vdcs.Wire{
-			WireLabel: arrIn[i],
+			WireLabel: arrIn[len(arrIn)-1],
 		})
-	} // 000 == 100
-	myInWires = append(myInWires, vdcs.Wire{
-		WireLabel: arrIn[len(arrIn)-1],
-	})
+	*/
+	var _inWire0 []byte = []byte("1")
+	var _inWire1 []byte = []byte("0")
+	myInWires := make([]vdcs.Wire, 6)
+	for idxBit := 0; idxBit < 3; idxBit++ {
+		contA := (_inWire0[0] >> idxBit) & 1
+		myInWires[(idxBit)*2] = vdcs.Wire{
+			WireLabel: arrIn[(idxBit)*4+int(contA)],
+		}
+		contB := (_inWire1[0] >> idxBit) & 1
+		myInWires[(idxBit)*2+1] = vdcs.Wire{
+			WireLabel: arrIn[(idxBit)*4+2+int(contB)],
+		}
+	}
+
 	fmt.Println("rand labels in")
 	fmt.Println(arrIn)
 

@@ -1,0 +1,36 @@
+{
+    
+        "InputGates":[
+            {
+                "GateID":"0",
+                "GateInputs": [],                
+                "TruthTable":[true,false,false,true]
+            },
+            {
+                "GateID":"1",
+                "GateInputs": [],                
+                "TruthTable":[true,false,false,true]
+            },
+            {
+                "GateID":"2",
+                "GateInputs": [],                
+                "TruthTable":[true,false,false,true]
+            }
+        ],
+        "MiddleGates":[{
+            "GateID":"3",
+            "GateInputs": ["0","1"],                
+            "TruthTable":[false,false,false,true]
+            }
+        ],
+        "OutputGates":[
+            {
+                "GateID":"4",
+                "GateInputs": ["2","3"],                
+                "TruthTable":[false,false,false,true]
+            }
+        ]
+    }
+
+
+

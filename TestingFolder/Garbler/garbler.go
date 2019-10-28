@@ -450,19 +450,22 @@ func main() {
 		},
 	}
 
-	gCirMes := Garble(mCirc)
+	gCirMes := vdcs.Garble(mCirc)
 
 	inputSize := len(mCirc.InputGates) * 2
 	outputSize := len(mCirc.OutputGates)
-	arrIn := YaoGarbledCkt_in(mCirc.Rin, mCirc.LblLength, inputSize)
-	arrOut := YaoGarbledCkt_out(mCirc.Rout, mCirc.LblLength, outputSize)
+	arrIn := vdcs.YaoGarbledCkt_in(mCirc.Rin, mCirc.LblLength, inputSize)
+	arrOut := vdcs.YaoGarbledCkt_out(mCirc.Rout, mCirc.LblLength, outputSize)
 	//validate input output wires
 	var myInWires []vdcs.Wire
-	for i := 0; i < len(arrIn); i += 2 {
+	for i := 0; i < len(arrIn)-2; i += 2 {
 		myInWires = append(myInWires, vdcs.Wire{
 			WireLabel: arrIn[i],
 		})
-	} // 000 == 000
+	} // 000 == 100
+	myInWires = append(myInWires, vdcs.Wire{
+		WireLabel: arrIn[len(arrIn)-1],
+	})
 	fmt.Println("rand labels in")
 	fmt.Println(arrIn)
 
@@ -474,6 +477,6 @@ func main() {
 	fmt.Println("Here we go test:")
 
 	gCirMes.InputWires = myInWires
-	result := Evaluate(gCirMes)
+	result := vdcs.Evaluate(gCirMes)
 	fmt.Println("println: ", result)
 }

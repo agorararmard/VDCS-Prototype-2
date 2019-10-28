@@ -5,24 +5,26 @@ import (
 )
 
 func main() {
-	var s1 string = "Hello World!"
-	var s2 string = "lo Wo"
-
+	//var s1 string = "Hello World!"
+	//var s2 string = "lo Wo"
+	var i string = "1"
+	var j string = "1"
 	//VDCS
-	if myStringMatch(s1, s2) == true {
+	if myEqual(i, j) == true {
 		fmt.Println("Yes they are!")
 	} else {
 		fmt.Println("No they aren't!")
 	}
-	var s3 string = "Hello Earth!"
+	//var s3 string = "Hello Earth!"
+	var z string = "0"
 	//VDCS
-	if myStringMatch(s3, s2) == true {
+	if myEqual(j, z) == true {
 		fmt.Println("Yes they are!")
 	} else {
 		fmt.Println("No they aren't!")
 	}
 }
 
-func myStringMatch(a, b string) (true bool) {
-	return
+func myEqual(a, b string) bool {
+	return a == b
 }

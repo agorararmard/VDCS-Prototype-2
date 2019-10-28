@@ -19,11 +19,11 @@ func main() {
 
 func evalCircuit(ID string) {
 	completedEval[ID] = vdcs.ResEval{
-		Res: []byte("You did it!"),
 		ComID: vdcs.ComID{
 			CID: ID,
 		},
 	}
+	completedEval[ID] = vdcs.Evaluate(pendingEval[ID])
 	delete(pendingEval, ID)
 }
 

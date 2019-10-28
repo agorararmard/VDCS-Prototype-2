@@ -25,6 +25,7 @@ func garbleCircuit(ID string) {
 			},
 		},
 	}
+	completedGarble[ID] = vdcs.Garble(pendingGarble[ID])
 	delete(pendingGarble, ID)
 }
 

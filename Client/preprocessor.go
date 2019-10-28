@@ -10,7 +10,7 @@ import (
 
 var goCnt int
 
-var supportedFunc [1]string = [1]string{"myStringMatch"}
+var supportedFunc [1]string = [1]string{"myEqual"}
 
 var mapImports map[string]bool = map[string]bool{
 	"fmt":           false,
@@ -28,7 +28,7 @@ var mapImports map[string]bool = map[string]bool{
 
 //const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- circuit) {fmt.Println(cir)\nfmt.Println(cID)\n//get the circuit in JSON format\n//Generate input wires\n//post to server\n//Wait for response\nchVDCSCommCircRes<-32\n}"
 //const commBlock string = "func comm(cir string,cID int, chVDCSCommCircRes chan<- GarbledCircuit) {file, _ := ioutil.ReadFile(cir + \".json\")\nk := circuit{}\nerr := json.Unmarshal([]byte(file), &k)\nif err != nil {\nlog.Fatal(err)\n}\nrand.Seed(int64(cID))\nk.CID = strconv.Itoa(rand.Int())\nsendToServerGarble(k)\n//Generate input wires\n//Wait for response\nvar g GarbledCircuit = getFromServerGarble(k.CID)\n//Validate Correctness of result\nchVDCSCommCircRes <- g\n}\n"
-const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan vdcs.GarbledMessage) (bool){\n	//generate input wires for given inputs\nk := <-chVDCSEvalCircRes\n	k.InputWires = []vdcs.Wire{vdcs.Wire{WireLabel: _inWire0}, vdcs.Wire{WireLabel: _inWire1}}\n//flush output wires\nvdcs.SendToServerEval(k)\nvar res []byte = vdcs.GetFromServerEval(k.CID)\n//validate and decode res\nfmt.Println(string(res))\nreturn strings.Contains(string(_inWire0), string(_inWire1))\n}\n"
+const evalBlock string = "func evalcID int, chVDCSEvalCircRes <-chan vdcs.GarbledMessage) (bool){\n	//generate input wires for given inputs\nk := <-chVDCSEvalCircRes\n		/*myInWires := make([]vdcs.Wire, len(_inWire0)*8*2)\nfor idxByte := 0; idxByte < len(_inWire0); idxByte++ {\nfor idxBit := 0; idxBit < 8; idxBit++ {\ncontA := (_inWire0[idxByte] >> idxBit) & 1\nmyInWires[(idxBit+idxByte*8)*2] = k.InputWires[(idxBit+idxByte*8)*4+int(contA)]\ncontB := (_inWire1[idxByte] >> idxBit) & 1\nmyInWires[(idxBit+idxByte*8)*2+1] = k.InputWires[(idxBit+idxByte*8)*4+2+int(contB)]\n}\n}*/\nmyInWires := make([]vdcs.Wire, 6)\nfor idxBit := 0; idxBit < 3; idxBit++ {\ncontA := (_inWire0[0] >> idxBit) & 1\nmyInWires[(idxBit)*2] = k.InputWires[(idxBit)*4+int(contA)]\ncontB := (_inWire1[0] >> idxBit) & 1\nmyInWires[(idxBit)*2+1] = k.InputWires[(idxBit)*4+2+int(contB)]\n}\n\nk.InputWires = myInWires//flush output wires\nmyOutputWires := k.OutputWires\nk.OutputWires = []vdcs.Wire{}\nvdcs.SendToServerEval(k)\nres := vdcs.GetFromServerEval(k.CID)\n//validate and decode res\nif bytes.Compare(res[0], myOutputWires[0].WireLabel) == 0 {\nreturn false\n} else if bytes.Compare(res[0], myOutputWires[0].WireLabel) == 0 {\nreturn true\n} else {\npanic(\"The server cheated me while evaluating\")\n}\n}\n"
 
 //const sendToGarbleBlock string = "func sendToServerGarble(k circuit) bool {\ncircuitJSON, err := json.Marshal(k)\nreq, err := http.NewRequest(\"POST\", \"http://localhost:8080/post\", bytes.NewBuffer(circuitJSON))\nreq.Header.Set(\"Content-Type\", \"application/json\")\nclient := &http.Client{}\nresp, err := client.Do(req)\nresp.Body.Close()\nif err != nil {\nlog.Fatal(err)\nreturn false\n}\nreturn true\n}\n"
 //const getFromGarbleBlock string = "func getFromServerGarble(id string) (k GarbledCircuit) {\niDJSON, err := json.Marshal(ComID{CID: id})\nreq, err := http.NewRequest(\"GET\", \"http://localhost:8080/get\", bytes.NewBuffer(iDJSON))\nreq.Header.Set(\"Content-Type\", \"application/json\")\nclient := &http.Client{}\nresp, err := client.Do(req)\nif err != nil {\nlog.Fatal(err)\n}\nbody, err := ioutil.ReadAll(resp.Body)\nerr = json.Unmarshal(body, &k)\nif err != nil {\nlog.Fatal(err)\n}\nresp.Body.Close()\nreturn\n}\n"
@@ -159,7 +159,7 @@ func addComm(s []string, circ string, mainIdx int) ([]string, string) {
 }
 
 func addEval(code []string, idx int, params, typesA []string, chName string) []string {
-	code[idx] = strings.ReplaceAll(code[idx], "myStringMatch", "eval"+strconv.Itoa(goCnt))
+	code[idx] = strings.ReplaceAll(code[idx], "myEqual", "eval"+strconv.Itoa(goCnt))
 	code[idx] = strings.Replace(code[idx], ")", ", "+strconv.Itoa(goCnt)+","+chName+")", 1)
 	stpIdx := strings.Index(evalBlock, "eval")
 	sigEval := evalBlock[:stpIdx+4] + strconv.Itoa(goCnt) + "("
@@ -193,8 +193,8 @@ Loop:
 
 func getTypes(code, params []string) (typesA []string) {
 
-	n := "_8"
-	k := "_8"
+	n := "_32"
+	k := "_32"
 
 	inc := 0
 

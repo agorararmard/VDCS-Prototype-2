@@ -60,7 +60,7 @@ type GarbledMessage struct {
 }
 
 type ResEval struct {
-	Res []byte `json:"Result"`
+	Res [][]byte `json:"Result"`
 	ComID
 }
 
@@ -134,7 +134,7 @@ func GetFromServerGarble(id string) (k GarbledMessage) {
 	return
 }
 
-func GetFromServerEval(id string) []byte {
+func GetFromServerEval(id string) [][]byte {
 	iDJSON, err := json.Marshal(ComID{CID: id})
 	req, err := http.NewRequest("GET", "http://localhost:8081/get", bytes.NewBuffer(iDJSON))
 	req.Header.Set("Content-Type", "application/json")

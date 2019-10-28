@@ -45,6 +45,64 @@ func YaoGarbledCkt_out(rOut int64, length int, outputSize int) [][]byte {
 	return GenNRandNumbers(2*outputSize, length, rOut, true)
 }
 
+func EncryptAES(encKey []byte, plainText []byte) (ciphertext []byte, ok bool) {
+
+	ok = false //assume failure
+	//			encKey = append(encKey, hash)
+	c, err := aes.NewCipher(encKey)
+	if err != nil {
+		//fmt.Println(err)
+	}
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		//fmt.Println(err)
+		return
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(cryptoRand.Reader, nonce); err != nil {
+		//fmt.Println(err)
+		return
+	}
+	ciphertext = gcm.Seal(nonce, nonce, plainText, nil)
+	//fmt.Println(ciphertext)
+	ok = true
+
+	return
+}
+
+func DecryptAES(encKey []byte, cipherText []byte) (plainText []byte, ok bool) {
+
+	ok = false //assume failure
+
+	c, err := aes.NewCipher(encKey)
+	if err != nil {
+		//fmt.Println(err)
+		return
+	}
+
+	gcm, err := cipher.NewGCM(c)
+	if err != nil {
+		//fmt.Println(err)
+		return
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(cipherText) < nonceSize {
+		//fmt.Println(err)
+		return
+	}
+
+	nonce, cipherText := cipherText[:nonceSize], cipherText[nonceSize:]
+	plainText, err = gcm.Open(nil, nonce, cipherText, nil)
+	if err != nil {
+		//fmt.Println(err)
+		return
+	}
+	//fmt.Println(string(plaintext))
+	ok = true
+	return
+}
+
 func Garble(circ vdcs.CircuitMessage) vdcs.GarbledMessage {
 
 	inputSize := len(circ.InputGates) * 2
@@ -125,23 +183,11 @@ func Garble(circ vdcs.CircuitMessage) vdcs.GarbledMessage {
 			for jk, tmpo := range hash {
 				encKey[jk] = tmpo
 			}
-			//			encKey = append(encKey, hash)
-			c, err := aes.NewCipher(encKey)
-			if err != nil {
-				fmt.Println(err)
+			var ok bool
+			gc.InputGates[k].GarbledValues[key], ok = EncryptAES(encKey, outKey.WireLabel)
+			if !ok {
+				fmt.Println("Encryption Failed")
 			}
-			gcm, err := cipher.NewGCM(c)
-			if err != nil {
-				fmt.Println(err)
-			}
-			nonce := make([]byte, gcm.NonceSize())
-			if _, err = io.ReadFull(cryptoRand.Reader, nonce); err != nil {
-				fmt.Println(err)
-			}
-			ciphertext := gcm.Seal(nonce, nonce, outKey.WireLabel, nil)
-			//fmt.Println(ciphertext)
-
-			gc.InputGates[k].GarbledValues[key] = ciphertext
 		}
 		//fmt.Println("\nwe got'em inWires \n")
 
@@ -177,41 +223,34 @@ func Garble(circ vdcs.CircuitMessage) vdcs.GarbledMessage {
 
 		gc.MiddleGates[k].GarbledValues = make([][]byte, len(val.TruthTable))
 		for key, value := range val.TruthTable {
+			//Concatinating the wire labels with the GateID
 			var concat []byte
 			for i := 0; i < inCnt; i++ {
 				idx := ((key >> i) & (1))
 				concat = append(concat, inWires[val.GateID][(i*2)+idx].WireLabel...)
 			}
 			concat = append(concat, []byte(val.GateID)...)
+
+			//Hashing the value
 			hash := sha256.Sum256(concat)
 
+			//Determining the value of the output wire
 			var idxOut int
 			if value {
 				idxOut = 1
 			}
 			outKey := outWires[val.GateID][int(idxOut)]
+
 			// generate a new aes cipher using our 32 byte long key
 			encKey := make([]byte, 32)
 			for jk, tmpo := range hash {
 				encKey[jk] = tmpo
 			}
-			//			encKey = append(encKey, hash)
-			c, err := aes.NewCipher(encKey)
-			if err != nil {
-				fmt.Println(err)
+			var ok bool
+			gc.MiddleGates[k].GarbledValues[key], ok = EncryptAES(encKey, outKey.WireLabel)
+			if !ok {
+				fmt.Println("Encryption Failed")
 			}
-			gcm, err := cipher.NewGCM(c)
-			if err != nil {
-				fmt.Println(err)
-			}
-			nonce := make([]byte, gcm.NonceSize())
-			if _, err = io.ReadFull(cryptoRand.Reader, nonce); err != nil {
-				fmt.Println(err)
-			}
-			ciphertext := gcm.Seal(nonce, nonce, outKey.WireLabel, nil)
-			//fmt.Println(ciphertext)
-
-			gc.MiddleGates[k].GarbledValues[key] = ciphertext
 		}
 
 	}
@@ -274,23 +313,11 @@ func Garble(circ vdcs.CircuitMessage) vdcs.GarbledMessage {
 			for jk, tmpo := range hash {
 				encKey[jk] = tmpo
 			}
-			//			encKey = append(encKey, hash)
-			c, err := aes.NewCipher(encKey)
-			if err != nil {
-				fmt.Println(err)
+			var ok bool
+			gc.OutputGates[k].GarbledValues[key], ok = EncryptAES(encKey, outKey.WireLabel)
+			if !ok {
+				fmt.Println("Encryption Failed")
 			}
-			gcm, err := cipher.NewGCM(c)
-			if err != nil {
-				fmt.Println(err)
-			}
-			nonce := make([]byte, gcm.NonceSize())
-			if _, err = io.ReadFull(cryptoRand.Reader, nonce); err != nil {
-				fmt.Println(err)
-			}
-			ciphertext := gcm.Seal(nonce, nonce, outKey.WireLabel, nil)
-			//fmt.Println(ciphertext)
-
-			gc.OutputGates[k].GarbledValues[key] = ciphertext
 		}
 
 	}
@@ -306,6 +333,93 @@ func Garble(circ vdcs.CircuitMessage) vdcs.GarbledMessage {
 		OutputWires:    outputWiresGC,
 	}
 	return gm
+}
+
+func Evaluate(gc vdcs.GarbledMessage) (result vdcs.ResEval) {
+
+	result.CID = gc.CID
+	outWires := make(map[string]vdcs.Wire)
+	var wInCnt int
+
+	for _, val := range gc.InputGates {
+
+		inCnt := int(math.Log2(float64(len(val.GarbledValues))))
+		var concat []byte
+		for i := 0; i < inCnt; i++ {
+			concat = append(concat, gc.InputWires[wInCnt].WireLabel...)
+			wInCnt++
+		}
+		concat = append(concat, []byte(val.GateID)...)
+		hash := sha256.Sum256(concat)
+		encKey := make([]byte, 32)
+		for jk, tmpo := range hash {
+			encKey[jk] = tmpo
+		}
+		outWires[val.GateID] = vdcs.Wire{}
+		for _, gValue := range val.GarbledValues {
+			tmpWireLabel, ok := DecryptAES(encKey, gValue)
+			if ok {
+				outWires[val.GateID] = vdcs.Wire{
+					WireLabel: tmpWireLabel,
+				}
+				break
+			}
+		}
+	}
+	for _, val := range gc.MiddleGates {
+
+		//inCnt := len(val.GateInputs)
+		var concat []byte
+		for _, preGate := range val.GateInputs {
+			concat = append(concat, outWires[preGate].WireLabel...)
+			//wInCnt++
+		}
+		concat = append(concat, []byte(val.GateID)...)
+		hash := sha256.Sum256(concat)
+		encKey := make([]byte, 32)
+		for jk, tmpo := range hash {
+			encKey[jk] = tmpo
+		}
+		outWires[val.GateID] = vdcs.Wire{}
+		for _, gValue := range val.GarbledValues {
+			tmpWireLabel, ok := DecryptAES(encKey, gValue)
+			if ok {
+				outWires[val.GateID] = vdcs.Wire{
+					WireLabel: tmpWireLabel,
+				}
+				break
+			}
+		}
+	}
+
+	for _, val := range gc.OutputGates {
+
+		//inCnt := len(val.GateInputs)
+		var concat []byte
+		for _, preGate := range val.GateInputs {
+			concat = append(concat, outWires[preGate].WireLabel...)
+			//wInCnt++
+		}
+		concat = append(concat, []byte(val.GateID)...)
+		hash := sha256.Sum256(concat)
+		encKey := make([]byte, 32)
+		for jk, tmpo := range hash {
+			encKey[jk] = tmpo
+		}
+		outWires[val.GateID] = vdcs.Wire{}
+		for _, gValue := range val.GarbledValues {
+			tmpWireLabel, ok := DecryptAES(encKey, gValue)
+			if ok {
+				outWires[val.GateID] = vdcs.Wire{
+					WireLabel: tmpWireLabel,
+				}
+				result.Res = append(result.Res, tmpWireLabel)
+				break
+			}
+		}
+	}
+
+	return
 }
 
 func main() {
@@ -337,5 +451,29 @@ func main() {
 	}
 
 	gCirMes := Garble(mCirc)
-	fmt.Println("println: ", gCirMes)
+
+	inputSize := len(mCirc.InputGates) * 2
+	outputSize := len(mCirc.OutputGates)
+	arrIn := YaoGarbledCkt_in(mCirc.Rin, mCirc.LblLength, inputSize)
+	arrOut := YaoGarbledCkt_out(mCirc.Rout, mCirc.LblLength, outputSize)
+	//validate input output wires
+	var myInWires []vdcs.Wire
+	for i := 0; i < len(arrIn); i += 2 {
+		myInWires = append(myInWires, vdcs.Wire{
+			WireLabel: arrIn[i],
+		})
+	} // 000 == 000
+	fmt.Println("rand labels in")
+	fmt.Println(arrIn)
+
+	fmt.Println("rand labels out")
+	fmt.Println(arrOut)
+
+	fmt.Println("rand labels chosen")
+	fmt.Println(myInWires)
+	fmt.Println("Here we go test:")
+
+	gCirMes.InputWires = myInWires
+	result := Evaluate(gCirMes)
+	fmt.Println("println: ", result)
 }

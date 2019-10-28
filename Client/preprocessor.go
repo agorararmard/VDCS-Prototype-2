@@ -14,10 +14,10 @@ var supportedFunc [1]string = [1]string{"myEqual"}
 
 var mapImports map[string]bool = map[string]bool{
 	"fmt":           false,
-	"strings":       false,
+	"strings":       true,
+	"bytes":         false,
 	"./vdcs":        false,
 	"net/http":      true,
-	"bytes":         true,
 	"encoding/json": true,
 	"io/ioutil":     true,
 	"log":           true,

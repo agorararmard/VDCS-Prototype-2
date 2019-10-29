@@ -93,7 +93,7 @@ func Comm(cir string, cID int, chVDCSCommCircRes chan<- GarbledMessage) {
 			LblLength: 16, //Should be rand.Int()%16 + 16
 		},
 	}
-	fmt.Println(mCirc)
+	//fmt.Println(mCirc)
 
 	for !SendToServerGarble(mCirc) {
 
@@ -114,8 +114,8 @@ func Comm(cir string, cID int, chVDCSCommCircRes chan<- GarbledMessage) {
 
 	//gcm = Garble(mCirc)
 	//Validate Correctness of result
-	fmt.Println(gcm)
-	fmt.Println("\nHere:\n", arrIn, "\nThere\n", arrOut)
+	//fmt.Println(gcm)
+	//fmt.Println("\nHere:\n", arrIn, "\nThere\n", arrOut)
 
 	for k, val := range gcm.InputWires {
 		if bytes.Compare(arrIn[k], val.WireLabel) != 0 {
@@ -563,9 +563,9 @@ func Evaluate(gc GarbledMessage) (result ResEval) {
 
 		if (bytes.Compare(outWires[val.GateID].WireLabel, Wire{}.WireLabel)) == 0 {
 			fmt.Println("Fail Evaluation Input Gate")
-		} else {
+		} /*else {
 			fmt.Println("\n\nYaaay\nGate ", val.GateID, " Now has an output wire: \n", outWires[val.GateID].WireLabel, "\n\n")
-		}
+		}*/
 	}
 	for _, val := range gc.MiddleGates {
 
@@ -593,9 +593,9 @@ func Evaluate(gc GarbledMessage) (result ResEval) {
 		}
 		if (bytes.Compare(outWires[val.GateID].WireLabel, Wire{}.WireLabel)) == 0 {
 			fmt.Println("Fail Evaluation Middle Gate")
-		} else {
+		} /*else {
 			fmt.Println("\n\nYaaay\nGate ", val.GateID, " Now has an output wire: \n", outWires[val.GateID].WireLabel, "\n\n")
-		}
+		}*/
 	}
 
 	for _, val := range gc.OutputGates {
@@ -616,21 +616,21 @@ func Evaluate(gc GarbledMessage) (result ResEval) {
 		for _, gValue := range val.GarbledValues {
 			tmpWireLabel, ok := DecryptAES(encKey, gValue)
 			if ok {
-				fmt.Println("\nI found my way out\n")
+				//fmt.Println("\nI found my way out\n")
 				outWires[val.GateID] = Wire{
 					WireLabel: tmpWireLabel,
 				}
 				result.Res = append(result.Res, tmpWireLabel)
 				break
-			} else {
+			} /*else {
 				fmt.Println("\nStill Trying to Find my way out\n")
-			}
+			}*/
 		}
 		if (bytes.Compare(outWires[val.GateID].WireLabel, Wire{}.WireLabel)) == 0 {
 			fmt.Println("Fail Evaluation Output Gate")
-		} else {
+		} /*else {
 			fmt.Println("\n\nYaaay\nGate ", val.GateID, " Now has an output wire: \n", outWires[val.GateID].WireLabel, "\n\n")
-		}
+		}*/
 	}
 
 	return

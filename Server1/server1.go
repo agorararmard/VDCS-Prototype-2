@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"./vdcs"
 )
@@ -14,34 +15,22 @@ import (
 var pendingGarble = make(map[string]vdcs.CircuitMessage)
 var completedGarble = make(map[string]vdcs.GarbledMessage)
 
-var mutexC = sync.RWMutex{}
-var mutexP = sync.RWMutex{}
+var mutex = sync.RWMutex{}
 
 func main() {
 	server()
 }
 
 func garbleCircuit(ID string) {
-	mutexC.Lock()
-	completedGarble[ID] = vdcs.GarbledMessage{
-		GarbledCircuit: vdcs.GarbledCircuit{
-			ComID: vdcs.ComID{
-				CID: ID,
-			},
-		},
-	}
-	mutexC.Unlock()
 
-	mutexC.Lock()
-	mutexP.RLock()
+	mutex.Lock()
 	completedGarble[ID] = vdcs.Garble(pendingGarble[ID])
-	fmt.Println("\n\n\nHere is a completed Garble: ", completedGarble[ID], "\n\n\n")
-	mutexP.RUnlock()
-	mutexC.Unlock()
+	//fmt.Println("\n\n\nHere is a completed Garble: ", completedGarble[ID], "\n\n\n")
+	mutex.Unlock()
 
-	mutexP.Lock()
+	mutex.Lock()
 	delete(pendingGarble, ID)
-	mutexP.Unlock()
+	mutex.Unlock()
 }
 
 func postHandler(w http.ResponseWriter, r *http.Request) {
@@ -59,9 +48,9 @@ func postHandler(w http.ResponseWriter, r *http.Request) {
 			log.Fatal("bad decode", err)
 		}
 		fmt.Println("CID:", x.CID)
-		mutexP.Lock()
+		mutex.Lock()
 		pendingGarble[x.CID] = x
-		mutexP.Unlock()
+		mutex.Unlock()
 		fmt.Println(x)
 		go garbleCircuit(x.CID)
 	}
@@ -78,14 +67,21 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatal("bad decode", err)
 		}
-		mutexP.RLock()
-		for _, ok := pendingGarble[x.CID]; ok; {
+		mutex.RLock()
+		for _, ok := pendingGarble[x.CID]; ok && (len(pendingGarble) != 0); {
+			mutex.RUnlock()
+			time.Sleep(10 * time.Microsecond)
+			mutex.RLock()
+			if _, oke := completedGarble[x.CID]; oke {
+				break
+			}
+			fmt.Println("Trapped in Here!!")
 		}
-		mutexP.RUnlock()
+		mutex.RUnlock()
 
-		mutexC.RLock()
+		mutex.RLock()
 		value, ok := completedGarble[x.CID]
-		mutexC.RUnlock()
+		mutex.RUnlock()
 		if ok {
 			responseJSON, err := json.Marshal(value)
 			if err != nil {
@@ -93,9 +89,9 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(responseJSON)
-			mutexC.Lock()
+			mutex.Lock()
 			delete(completedGarble, x.CID)
-			mutexC.Unlock()
+			mutex.Unlock()
 		}
 	}
 }

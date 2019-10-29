@@ -10,16 +10,16 @@ import (
 
 
 func main() {
-_myEqual_string_32_string_32Ch1:= make(chan vdcs.GarbledMessage)
-go vdcs.Comm("myEqual_string_32_string_32",1,_myEqual_string_32_string_32Ch1)
-_myEqual_string_32_string_32Ch0:= make(chan vdcs.GarbledMessage)
-go vdcs.Comm("myEqual_string_32_string_32",0,_myEqual_string_32_string_32Ch0)
+_myEqual_string_1_string_1Ch1:= make(chan vdcs.GarbledMessage)
+go vdcs.Comm("myEqual_string_1_string_1",1,_myEqual_string_1_string_1Ch1)
+_myEqual_string_1_string_1Ch0:= make(chan vdcs.GarbledMessage)
+go vdcs.Comm("myEqual_string_1_string_1",0,_myEqual_string_1_string_1Ch0)
 	//var s1 string = "Hello World!"
 	//var s2 string = "lo Wo"
 	var i string = "1"
 	var j string = "1"
 	//VDCS
-	if eval0(i, j, 0,_myEqual_string_32_string_32Ch0) == true {
+	if eval0(i, j, 0,_myEqual_string_1_string_1Ch0) == true {
 		fmt.Println("Yes they are!")
 	} else {
 		fmt.Println("No they aren't!")
@@ -27,7 +27,7 @@ go vdcs.Comm("myEqual_string_32_string_32",0,_myEqual_string_32_string_32Ch0)
 	//var s3 string = "Hello Earth!"
 	var z string = "0"
 	//VDCS
-	if eval1(j, z, 1,_myEqual_string_32_string_32Ch1) == true {
+	if eval1(j, z, 1,_myEqual_string_1_string_1Ch1) == true {
 		fmt.Println("Yes they are!")
 	} else {
 		fmt.Println("No they aren't!")

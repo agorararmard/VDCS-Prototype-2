@@ -193,8 +193,8 @@ Loop:
 
 func getTypes(code, params []string) (typesA []string) {
 
-	n := "_32"
-	k := "_32"
+	n := "_1"
+	k := "_1"
 
 	inc := 0
 

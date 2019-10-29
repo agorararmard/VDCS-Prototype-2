@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"./vdcs"
 )
@@ -20,13 +21,6 @@ func main() {
 }
 
 func evalCircuit(ID string) {
-	mutex.Lock()
-	completedEval[ID] = vdcs.ResEval{
-		ComID: vdcs.ComID{
-			CID: ID,
-		},
-	}
-	mutex.Unlock()
 
 	mutex.Lock()
 	fmt.Println("Pending Eval before send: ", pendingEval[ID])
@@ -70,7 +64,13 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 			log.Fatal("bad decode", err)
 		}
 		mutex.RLock()
-		for _, ok := pendingEval[x.CID]; ok; {
+		for _, ok := pendingEval[x.CID]; ok && (len(pendingEval) != 0); {
+			mutex.RUnlock()
+			time.Sleep(10 * time.Microsecond)
+			mutex.RLock()
+			if _, oke := completedEval[x.CID]; oke {
+				break
+			}
 			fmt.Println("Trapped In Here!")
 		}
 		mutex.RUnlock()

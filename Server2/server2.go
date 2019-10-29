@@ -29,6 +29,7 @@ func evalCircuit(ID string) {
 	mutex.Unlock()
 
 	mutex.Lock()
+	fmt.Println("Pending Eval before send: ", pendingEval[ID])
 	completedEval[ID] = vdcs.Evaluate(pendingEval[ID])
 	fmt.Println("Completed Eval before send: ", completedEval[ID])
 	mutex.Unlock()
@@ -70,6 +71,7 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		mutex.RLock()
 		for _, ok := pendingEval[x.CID]; ok; {
+			fmt.Println("Trapped In Here!")
 		}
 		mutex.RUnlock()
 

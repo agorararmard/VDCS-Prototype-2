@@ -64,7 +64,7 @@ type GarbledCircuit struct {
 type GarbledMessage struct {
 	InputWires []Wire `json:"InputWires"`
 	GarbledCircuit
-	OutputWires []Wire `json:"OutputGates"`
+	OutputWires []Wire `json:"OutputWires"`
 }
 
 type ResEval struct {
@@ -560,6 +560,12 @@ func Evaluate(gc GarbledMessage) (result ResEval) {
 				break
 			}
 		}
+
+		if (bytes.Compare(outWires[val.GateID].WireLabel, Wire{}.WireLabel)) == 0 {
+			fmt.Println("Fail Evaluation Input Gate")
+		} else {
+			fmt.Println("\n\nYaaay\nGate ", val.GateID, " Now has an output wire: \n", outWires[val.GateID].WireLabel, "\n\n")
+		}
 	}
 	for _, val := range gc.MiddleGates {
 
@@ -586,7 +592,9 @@ func Evaluate(gc GarbledMessage) (result ResEval) {
 			}
 		}
 		if (bytes.Compare(outWires[val.GateID].WireLabel, Wire{}.WireLabel)) == 0 {
-			fmt.Println("Fail Evaluation")
+			fmt.Println("Fail Evaluation Middle Gate")
+		} else {
+			fmt.Println("\n\nYaaay\nGate ", val.GateID, " Now has an output wire: \n", outWires[val.GateID].WireLabel, "\n\n")
 		}
 	}
 
@@ -608,12 +616,20 @@ func Evaluate(gc GarbledMessage) (result ResEval) {
 		for _, gValue := range val.GarbledValues {
 			tmpWireLabel, ok := DecryptAES(encKey, gValue)
 			if ok {
+				fmt.Println("\nI found my way out\n")
 				outWires[val.GateID] = Wire{
 					WireLabel: tmpWireLabel,
 				}
 				result.Res = append(result.Res, tmpWireLabel)
 				break
+			} else {
+				fmt.Println("\nStill Trying to Find my way out\n")
 			}
+		}
+		if (bytes.Compare(outWires[val.GateID].WireLabel, Wire{}.WireLabel)) == 0 {
+			fmt.Println("Fail Evaluation Output Gate")
+		} else {
+			fmt.Println("\n\nYaaay\nGate ", val.GateID, " Now has an output wire: \n", outWires[val.GateID].WireLabel, "\n\n")
 		}
 	}
 

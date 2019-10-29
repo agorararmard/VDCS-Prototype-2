@@ -35,6 +35,7 @@ func garbleCircuit(ID string) {
 	mutexC.Lock()
 	mutexP.RLock()
 	completedGarble[ID] = vdcs.Garble(pendingGarble[ID])
+	fmt.Println("\n\n\nHere is a completed Garble: ", completedGarble[ID], "\n\n\n")
 	mutexP.RUnlock()
 	mutexC.Unlock()
 

@@ -45,7 +45,7 @@ _inWire1:=[]byte(j)
 
 	//generate input wires for given inputs
 k := <-chVDCSEvalCircRes
-		/*myInWires := make([]vdcs.Wire, len(_inWire0)*8*2)
+		myInWires := make([]vdcs.Wire, len(_inWire0)*8*2)
 for idxByte := 0; idxByte < len(_inWire0); idxByte++ {
 for idxBit := 0; idxBit < 8; idxBit++ {
 contA := (_inWire0[idxByte] >> idxBit) & 1
@@ -53,15 +53,14 @@ myInWires[(idxBit+idxByte*8)*2] = k.InputWires[(idxBit+idxByte*8)*4+int(contA)]
 contB := (_inWire1[idxByte] >> idxBit) & 1
 myInWires[(idxBit+idxByte*8)*2+1] = k.InputWires[(idxBit+idxByte*8)*4+2+int(contB)]
 }
-}*/
-myInWires := make([]vdcs.Wire, 6)
+}
+/*myInWires := make([]vdcs.Wire, 6)
 for idxBit := 0; idxBit < 3; idxBit++ {
 contA := (_inWire0[0] >> idxBit) & 1
 myInWires[(idxBit)*2] = k.InputWires[(idxBit)*4+int(contA)]
 contB := (_inWire1[0] >> idxBit) & 1
 myInWires[(idxBit)*2+1] = k.InputWires[(idxBit)*4+2+int(contB)]
-}
-
+}*/
 k.InputWires = myInWires//flush output wires
 myOutputWires := k.OutputWires
 k.OutputWires = []vdcs.Wire{}
@@ -88,7 +87,7 @@ _inWire1:=[]byte(z)
 
 	//generate input wires for given inputs
 k := <-chVDCSEvalCircRes
-		/*myInWires := make([]vdcs.Wire, len(_inWire0)*8*2)
+		myInWires := make([]vdcs.Wire, len(_inWire0)*8*2)
 for idxByte := 0; idxByte < len(_inWire0); idxByte++ {
 for idxBit := 0; idxBit < 8; idxBit++ {
 contA := (_inWire0[idxByte] >> idxBit) & 1
@@ -96,15 +95,14 @@ myInWires[(idxBit+idxByte*8)*2] = k.InputWires[(idxBit+idxByte*8)*4+int(contA)]
 contB := (_inWire1[idxByte] >> idxBit) & 1
 myInWires[(idxBit+idxByte*8)*2+1] = k.InputWires[(idxBit+idxByte*8)*4+2+int(contB)]
 }
-}*/
-myInWires := make([]vdcs.Wire, 6)
+}
+/*myInWires := make([]vdcs.Wire, 6)
 for idxBit := 0; idxBit < 3; idxBit++ {
 contA := (_inWire0[0] >> idxBit) & 1
 myInWires[(idxBit)*2] = k.InputWires[(idxBit)*4+int(contA)]
 contB := (_inWire1[0] >> idxBit) & 1
 myInWires[(idxBit)*2+1] = k.InputWires[(idxBit)*4+2+int(contB)]
-}
-
+}*/
 k.InputWires = myInWires//flush output wires
 myOutputWires := k.OutputWires
 k.OutputWires = []vdcs.Wire{}
